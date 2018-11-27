@@ -3,22 +3,25 @@
 #cross-sectional analysis within a population-based birth cohort
 #Sara Fontanella, Clement Frainay, Clare S Murray, Angela Simpson, Adnan Custovic
 
-rm(list=ls())
+#### CODE to run full analysis 
+###  As seeds were not set in the primary analysis, results might vary due to the random initialisation of the classification models.
+
 ##########
 #Load packages
 ##########
-
 library(ggplot2)
 library(igraph)
 library(Pigengene)
 library(NbClust)
 
-#Functions
 ##########
 #Load data
 ##########
-load("data11yrs.RData")
+rm(list=ls())
 
+MyData<-read.csv(file="Filtered_data11yrs.csv")
+sIgE<-MyData[,1:44]
+asthma<-MyData[,45]
 ###########################################
 #Statistical grouping of allergen components and their connectivity structure: component clusters
 ###########################################
@@ -39,7 +42,6 @@ for (i in 1:ncol(sIgE)){
 alpha = .05   #level of significance
 AdjMatIgE[P>alpha]<-0
 diag(AdjMatIgE)=0
-
 #~~~~~~~~~~~~~~~
 #Cluster
 #~~~~~~~~~~~~~~~
@@ -49,8 +51,6 @@ groups <- cutree(fit1, h=h)
 
 sort(table(groups))   #number of allergen components per cluster
 groups   #cluster assignment of allergen components
-
-
 ###########################################
 #Patterns of sensitisation among study participants: sensitisation clusters
 ###########################################
@@ -67,9 +67,9 @@ NB<-NbClust(bin.sIgE,diss=NULL,distance="binary",min.nc=minC,max.nc=maxC,method=
 Clusters<-as.factor(NB$Best.partition)
 
 
-####################################################
-# Differential sIgE co-expression patterns in asthma
-####################################################
+####################################################################################
+# Differential sIgE co-expression patterns in asthma & CLASSIFICATION (random seed)
+####################################################################################
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~JDINAC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 library(caret)
 library(e1071)
@@ -85,6 +85,7 @@ weights[weights==1] <-.7
 # extract edges list
 AdjMatIgE[lower.tri(AdjMatIgE,diag=T)] <-0
 EDGE <- which(AdjMatIgE!=0, arr.ind=T) 
+
 source("jdinac_weighted.R")
 
 difnet <- jdinac_weighted(EDGE=EDGE,classLabel=asthma,DataFit=log_sIgE,weight=weights,nsplit=50,nfolds=10)
@@ -96,7 +97,6 @@ Hard.cl.difnet[Prob.difnet<=.5]<-0
 
 #confusion matrix
 Conf.matrix.JDINAC<-caret::confusionMatrix(as.factor(Hard.cl.difnet),as.factor(asthma),"1")
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~LOGISTIC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 library(glmnet)
 
@@ -130,3 +130,4 @@ library(hmeasure)
 
 Perf.JDinac<-HMeasure(asthma, Prob.difnet, threshold=0.5, level=0.95)$metrics
 Perf.logreg<-HMeasure(asthma, Prob.log.reg, threshold=0.5, level=0.95)$metrics
+
